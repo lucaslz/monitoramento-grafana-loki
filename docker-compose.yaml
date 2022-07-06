@@ -1,0 +1,46 @@
+version: '3'
+networks:
+  loki:
+    driver: bridge
+services:
+  web:
+    image: fabricioveronez/gerador-log:v1
+    ports:
+      - 5000:5000
+    volumes:
+      - ./logs:/logs
+    environment:
+      - LOG_FILE=/logs/app.log
+    networks:
+      - loki
+
+  loki:
+    image: grafana/loki:2.5.0
+    command:
+      - -config.file=/etc/loki/local-config.yaml
+      - -print-config-stderr=true
+    networks:
+      - loki
+
+  promtail:
+    image: grafana/promtail:2.5.0
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      - loki
+      - web
+    networks:
+      - loki
+    ports:
+      - 9080:9080
+    volumes:
+      - "./logs:/logs"
+      - "./config.yaml:/etc/promtail/config.yaml"
+  
+  grafana:
+    image: grafana/grafana:9.0.1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - loki
+    networks:
+      - loki
